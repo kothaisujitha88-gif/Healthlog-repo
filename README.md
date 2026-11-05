@@ -1,1 +1,1 @@
-(architecture-health-log.png)
+!(architecture-health-log.png)
