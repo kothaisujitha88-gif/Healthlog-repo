@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Health Log</title>
+<style>
+:root{--bg:#f4f5f8;--card:#fff;--text:#1d2430;--muted:#6b7585;--line:#e1e5eb;--accent:#4f46e5;box-sizing:border-box}
+@media (prefers-color-scheme:dark){:root{--bg:#12161c;--card:#1b212a;--text:#e8ecf1;--muted:#95a1b2;--line:#2b3340;--accent:#818cf8}}
+html{color-scheme:light dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:860px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0}
+.top{display:flex;justify-content:space-between;align-items:end;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.who{font-size:13px;color:var(--muted)}
+.msg{margin:10px 0;padding:10px 14px;border-radius:10px;background:var(--card);border:1px solid var(--line);font-size:14px}
+.msg.bad{border-color:#e11d48;color:#e11d48}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;text-align:center}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.col{border-radius:16px;padding:16px;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.15)}
+.sugar{background:linear-gradient(135deg,#d97706,#b45309)}
+.bp{background:linear-gradient(135deg,#e11d48,#9f1239)}
+.wt{background:linear-gradient(135deg,#0d9488,#0f5f59)}
+.col h2{margin:0 0 12px;font-size:18px}
+.pair{display:flex;gap:10px}
+.pair>div{flex:1;min-width:0}
+.col label,.top label{display:block;font-size:12px;margin-bottom:3px}
+.col label{opacity:.92}
+.top label{color:var(--muted)}
+input{width:100%;padding:10px;border:0;border-radius:10px;background:#fff;color:#1d2430;font:inherit}
+.top input{border:1px solid var(--line);background:var(--card);color:var(--text)}
+.unit{font-size:11px;opacity:.85;margin-top:6px}
+.save{display:flex;gap:10px;align-items:center;margin:14px 0;flex-wrap:wrap}
+button{padding:10px 18px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--text);font:inherit;cursor:pointer}
+button.p{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button:disabled{opacity:.6;cursor:wait}
+.err{color:#e11d48;font-size:13px}
+.banner{border-radius:16px;padding:16px 18px;color:#fff;background:linear-gradient(135deg,#4f46e5,#7c3aed);box-shadow:0 4px 14px rgba(0,0,0,.15)}
+.banner.due{background:linear-gradient(135deg,#e11d48,#f97316)}
+.banner.ok{background:linear-gradient(135deg,#0d9488,#2563eb)}
+.banner b{display:block;font-size:12px;opacity:.9;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.banner .m{font-size:18px;font-weight:600;margin-top:2px}
+details{margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 16px}
+summary{cursor:pointer;font-weight:600}
+.scroll{overflow-x:auto;margin-top:10px}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:520px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-size:12px}
+.sm{padding:4px 9px;font-size:13px;border-radius:8px}
+.d{color:#e11d48}
+.muted{color:var(--muted);font-size:13px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+<div class="top">
+<h1>Health Log</h1>
+<div><span class="who" id="who"></span> <button class="sm" id="out" hidden>Sign out</button></div>
+</div>
+<div class="msg" id="note" hidden></div>
+
+<div class="card" id="signedOut" hidden>
+<p>Sign in or create an account to see your readings.</p>
+<button class="p" id="in">Sign in / Sign up</button>
+</div>
+
+<div id="app" hidden>
+<div class="top" style="justify-content:flex-end">
+<div><label>Entry date</label><input type="date" id="date"></div>
+</div>
+<div class="cols">
+<section class="col sugar"><h2>Sugar</h2>
+<div class="pair">
+<div><label>Fasting</label><input type="number" id="fs" inputmode="decimal" min="0"></div>
+<div><label>After meal</label><input type="number" id="pm" inputmode="decimal" min="0"></div>
+</div><div class="unit">mg/dL</div></section>
+<section class="col bp"><h2>BP</h2>
+<div class="pair">
+<div><label>Systolic</label><input type="number" id="sys" inputmode="numeric" min="0"></div>
+<div><label>Diastolic</label><input type="number" id="dia" inputmode="numeric" min="0"></div>
+</div><div class="unit">mmHg</div></section>
+<section class="col wt"><h2>Weight</h2>
+<div><label>Weight</label><input type="number" id="wt" inputmode="decimal" min="0" step="0.1"></div>
+<div class="unit">kg</div></section>
+</div>
+<div class="save">
+<button class="p" id="save">Save entry</button>
+<button id="cancel" hidden>Cancel edit</button>
+<span class="err" id="err"></span>
+</div>
+<div class="banner" id="banner"><b>Next entry</b><div class="m" id="bmsg"></div></div>
+<details>
+<summary>History</summary>
+<div class="scroll"><table>
+<thead><tr><th>Date</th><th>Fasting</th><th>After meal</th><th>BP</th><th>Weight</th><th></th></tr></thead>
+<tbody id="list"></tbody></table></div>
+</details>
+</div>
+</main>
+<script>
+const CONFIG = {
+  region: 'us-east-1',
+  clientId: '<APP_CLIENT_ID>',
+  cognitoDomain: 'https://<COGNITO_DOMAIN_PREFIX>.auth.us-east-1.amazoncognito.com',
+  apiUrl: '<API_URL>',
+  redirectUri: location.hostname === 'localhost' ? location.origin : location.origin + location.pathname
+};
+
+const C = CONFIG;
+const $ = id => document.getElementById(id);
+let entries = [], editId = null, delArm = null;
+
+const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const rand = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
+
+function note(text, bad) {
+  const n = $('note');
+  n.textContent = text || '';
+  n.className = 'msg' + (bad ? ' bad' : '');
+  n.hidden = !text;
+}
+
+async function login() {
+  const verifier = rand(48), state = rand(16);
+  sessionStorage.setItem('pkce_v', verifier);
+  sessionStorage.setItem('pkce_s', state);
+  const challenge = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
+  const p = new URLSearchParams({
+    response_type: 'code', client_id: C.clientId, redirect_uri: C.redirectUri,
+    scope: 'openid email', code_challenge_method: 'S256', code_challenge: challenge, state
+  });
+  location.href = C.cognitoDomain + '/oauth2/authorize?' + p;
+}
+
+async function handleRedirect() {
+  const q = new URLSearchParams(location.search);
+  if (q.get('error')) { note('Sign-in failed: ' + (q.get('error_description') || q.get('error')), true); history.replaceState(null, '', C.redirectUri); return; }
+  const code = q.get('code');
+  if (!code) return;
+  if (q.get('state') !== sessionStorage.getItem('pkce_s')) { note('Sign-in check failed. Please try again.', true); history.replaceState(null, '', C.redirectUri); return; }
+  const r = await fetch(C.cognitoDomain + '/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'authorization_code', client_id: C.clientId, code, redirect_uri: C.redirectUri, code_verifier: sessionStorage.getItem('pkce_v') })
+  });
+  const t = await r.json();
+  history.replaceState(null, '', C.redirectUri);
+  if (!r.ok) { note('Could not finish sign-in: ' + (t.error || r.status), true); return; }
+  sessionStorage.setItem('id_token', t.id_token);
+  sessionStorage.setItem('exp', Date.now() + t.expires_in * 1000);
+}
+
+function token() {
+  const t = sessionStorage.getItem('id_token'), e = +sessionStorage.getItem('exp');
+  return t && Date.now() < e ? t : null;
+}
+
+function email() {
+  try { return JSON.parse(atob(token().split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).email || ''; } catch (e) { return ''; }
+}
+
+function showSignedOut(msg) {
+  sessionStorage.removeItem('id_token');
+  sessionStorage.removeItem('exp');
+  $('app').hidden = true; $('out').hidden = true; $('who').textContent = '';
+  $('signedOut').hidden = false;
+  note(msg || '', false);
+}
+
+async function api(method, path, body) {
+  const t = token();
+  if (!t) { showSignedOut('Your session ended. Please sign in again.'); throw new Error('no token'); }
+  let r;
+  try {
+    r = await fetch(C.apiUrl + path, {
+      method,
+      headers: Object.assign({ Authorization: 'Bearer ' + t }, body ? { 'Content-Type': 'application/json' } : {}),
+      body: body ? JSON.stringify(body) : undefined
+    });
+  } catch (e) {
+    note('Could not reach the API. Check the Invoke URL in CONFIG and the CORS settings.', true);
+    throw e;
+  }
+  if (r.status === 401) { showSignedOut('Your session ended. Please sign in again.'); throw new Error('401'); }
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) { const m = data.error || data.message || ('Error ' + r.status); note(m, true); throw new Error(m); }
+  return data;
+}
+
+const num = x => x === '' || x == null ? null : Number(x);
+const v = x => x == null ? '–' : x;
+const v2 = x => x == null ? '' : x;
+const fmt = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const today = () => fmt(new Date());
+const pretty = s => new Date(s + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+const firstOfNext = s => { const p = s.split('-').map(Number); return fmt(new Date(p[0], p[1], 1)); };
+
+function showNext() {
+  const b = $('banner'), m = $('bmsg');
+  if (!entries.length) { b.className = 'banner due'; m.textContent = 'No entries yet. Add your first entry above.'; return; }
+  const latest = entries.map(e => e.date).sort().pop();
+  const due = firstOfNext(latest);
+  const n = Math.round((new Date(due + 'T00:00:00') - new Date(today() + 'T00:00:00')) / 86400000);
+  if (n > 0) { b.className = 'banner ok'; m.textContent = 'Your next entry is on ' + pretty(due) + ' (in ' + n + ' day' + (n > 1 ? 's' : '') + ').'; }
+  else { b.className = 'banner due'; m.textContent = 'Your entry was due on ' + pretty(due) + '. Add this month\u2019s readings now.'; }
+}
+
+function render() {
+  const s = entries.slice().sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+  $('list').innerHTML = s.length ? s.map(e =>
+    '<tr><td>' + e.date + '</td><td>' + v(e.fs) + '</td><td>' + v(e.pm) + '</td><td>' + (e.sys != null && e.dia != null ? e.sys + '/' + e.dia : '–') + '</td><td>' + v(e.wt) + '</td><td>' +
+    '<button class="sm" data-a="edit" data-id="' + e.entryId + '">Edit</button> <button class="sm d" data-a="del" data-id="' + e.entryId + '">' + (delArm === e.entryId ? 'Confirm?' : 'Delete') + '</button></td></tr>'
+  ).join('') : '<tr><td colspan="6" class="muted">No entries yet.</td></tr>';
+  showNext();
+}
+
+function resetForm() {
+  editId = null;
+  ['fs', 'pm', 'sys', 'dia', 'wt'].forEach(i => $(i).value = '');
+  $('date').value = today();
+  $('save').textContent = 'Save entry';
+  $('cancel').hidden = true;
+  $('err').textContent = '';
+}
+
+async function load() {
+  entries = await api('GET', '/entries');
+  render();
+}
+
+$('in').onclick = login;
+$('out').onclick = () => showSignedOut('You are signed out.');
+$('cancel').onclick = resetForm;
+
+$('save').onclick = async () => {
+  const e = { date: $('date').value, fs: num($('fs').value), pm: num($('pm').value), sys: num($('sys').value), dia: num($('dia').value), wt: num($('wt').value) };
+  if (!e.date) { $('err').textContent = 'Pick a date.'; return; }
+  if (e.fs == null && e.pm == null && e.sys == null && e.dia == null && e.wt == null) { $('err').textContent = 'Enter at least one reading.'; return; }
+  if ((e.sys == null) !== (e.dia == null)) { $('err').textContent = 'Enter both systolic and diastolic, or neither.'; return; }
+  $('save').disabled = true;
+  note('');
+  try {
+    if (editId) await api('PUT', '/entries/' + encodeURIComponent(editId), e);
+    else await api('POST', '/entries', e);
+    resetForm();
+    await load();
+  } catch (x) { } finally { $('save').disabled = false; }
+};
+
+$('list').onclick = async ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  const id = b.getAttribute('data-id');
+  if (b.getAttribute('data-a') === 'edit') {
+    const e = entries.find(x => x.entryId === id); if (!e) return;
+    editId = id;
+    $('date').value = e.date; $('fs').value = v2(e.fs); $('pm').value = v2(e.pm);
+    $('sys').value = v2(e.sys); $('dia').value = v2(e.dia); $('wt').value = v2(e.wt);
+    $('save').textContent = 'Update entry'; $('cancel').hidden = false; window.scrollTo(0, 0);
+  } else if (delArm === id) {
+    delArm = null;
+    try { await api('DELETE', '/entries/' + encodeURIComponent(id)); if (editId === id) resetForm(); await load(); } catch (x) { }
+  } else { delArm = id; render(); }
+};
+
+(async function start() {
+  if (C.apiUrl.startsWith('PASTE_')) { note('Set apiUrl in the CONFIG block at the top of the script, then reload.', true); }
+  await handleRedirect();
+  if (!token()) { $('signedOut').hidden = false; return; }
+  $('who').textContent = email();
+  $('out').hidden = false;
+  $('app').hidden = false;
+  resetForm();
+  try { await load(); } catch (x) { }
+})();
+</script>
+</body>
+</html>
