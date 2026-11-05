@@ -1,1 +1,1 @@
-![Healthlog Architecture](architecture-health-log.png)
+(architecture-health-log.png)
